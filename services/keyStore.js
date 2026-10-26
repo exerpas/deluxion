@@ -27,9 +27,18 @@ function save() {
   }
 }
 
+const KEY_PREFIX = 'OCTOBER';
+const KEY_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+function randomChars(length) {
+  let out = '';
+  for (let i = 0; i < length; i++) out += KEY_ALPHABET[crypto.randomInt(KEY_ALPHABET.length)];
+  return out;
+}
+
+// Formato: OCTOBER-XXXX-XXXXXXXXXXXX (A-Z y 0-9, generado con crypto.randomInt)
 function generateKey() {
-  const part = () => crypto.randomBytes(3).toString('hex').toUpperCase();
-  return `LIC-${part()}-${part()}-${part()}-${part()}`;
+  return `${KEY_PREFIX}-${randomChars(4)}-${randomChars(12)}`;
 }
 
 function list() {

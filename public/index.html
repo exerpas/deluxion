@@ -1,117 +1,63 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NIGHT - Login</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
-
-        body {
-            background-color: #0b0b0e;
-            color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        /* Título superior estilizado */
-        .app-title {
-            font-size: 1.8rem;
-            font-weight: 700;
-            letter-spacing: 0.5rem;
-            margin-bottom: 2.5rem;
-            text-transform: uppercase;
-            color: #ffffff;
-        }
-
-        /* Contenedor tipo tarjeta */
-        .login-card {
-            background-color: #121216;
-            border: 1px solid #1a1a20;
-            border-radius: 12px;
-            padding: 2.5rem 2rem;
-            width: 100%;
-            max-width: 420px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            text-align: center;
-        }
-
-        .login-card h2 {
-            font-size: 0.95rem;
-            font-weight: 500;
-            letter-spacing: 0.05rem;
-            color: #a0a0ab;
-            margin-bottom: 1.5rem;
-            text-transform: uppercase;
-        }
-
-        /* Campo de texto (Input) */
-        .input-group {
-            margin-bottom: 1.25rem;
-        }
-
-        .input-group input {
-            width: 100%;
-            background-color: #08080a;
-            border: 1px solid #1f1f28;
-            border-radius: 8px;
-            padding: 0.85rem 1rem;
-            color: #ffffff;
-            font-size: 0.9rem;
-            text-align: center;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .input-group input::placeholder {
-            color: #4a4a58;
-        }
-
-        .input-group input:focus {
-            border-color: #ffffff;
-        }
-
-        /* Botón de envío */
-        .submit-btn {
-            width: 100%;
-            background-color: #ffffff;
-            color: #000000;
-            border: none;
-            border-radius: 8px;
-            padding: 0.85rem;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s, opacity 0.2s;
-        }
-
-        .submit-btn:hover {
-            opacity: 0.9;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Acceso por licencia</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
+  <main class="w-full max-w-md">
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-8 shadow-2xl backdrop-blur">
+      <div class="mb-6 text-center">
+        <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/20 text-2xl">🔑</div>
+        <h1 class="text-2xl font-semibold">Iniciar sesión</h1>
+        <p class="mt-1 text-sm text-slate-400">Ingresa tu Key de licencia para continuar</p>
+      </div>
 
-    <div class="app-title">NIGHT</div>
-
-    <div class="login-card">
-        <h2>Enter Access Key</h2>
-        <form action="/login" method="POST">
-            <div class="input-group">
-                <input type="text" name="key" placeholder="Phantom-XXXX-XXXXXXXXXXXX" required autocomplete="off">
-            </div>
-            <button type="submit" class="submit-btn">Enter</button>
-        </form>
+      <div id="login-form" class="space-y-4">
+        <div>
+          <label for="key" class="mb-1 block text-sm font-medium text-slate-300">Key de licencia</label>
+          <input id="key" type="text" autocomplete="off" spellcheck="false" placeholder="OCTOBER-XXXX-XXXXXXXXXXXX"
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 font-mono text-sm placeholder-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30" />
+        </div>
+        <p id="error" class="hidden rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400"></p>
+        <button id="submit" type="button"
+          class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50">
+          Entrar
+        </button>
+      </div>
     </div>
+  </main>
 
+  <script>
+    const keyInput = document.getElementById('key');
+    const errorBox = document.getElementById('error');
+    const button = document.getElementById('submit');
+
+    async function login() {
+      errorBox.classList.add('hidden');
+      button.disabled = true;
+      button.textContent = 'Verificando…';
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: keyInput.value }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'No se pudo iniciar sesión');
+        window.location.href = '/dashboard';
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.classList.remove('hidden');
+        button.disabled = false;
+        button.textContent = 'Entrar';
+      }
+    }
+
+    button.addEventListener('click', login);
+    keyInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+  </script>
 </body>
 </html>
