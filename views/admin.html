@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Administración de licencias</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+
+  <!-- Login admin -->
+  <div id="login-view" class="flex min-h-screen items-center justify-center p-4">
+    <div class="w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-900/70 p-8 shadow-2xl">
+      <h1 class="mb-1 text-xl font-semibold">Administración</h1>
+      <p class="mb-5 text-sm text-slate-400">Introduce la contraseña maestra</p>
+      <input id="admin-key" type="password" placeholder="ADMIN_KEY" autocomplete="off"
+        class="mb-3 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30" />
+      <p id="login-error" class="mb-3 hidden rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400"></p>
+      <button id="login-btn" class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 font-medium hover:bg-indigo-500">Entrar</button>
+    </div>
+  </div>
+
+  <!-- Panel -->
+  <div id="panel-view" class="hidden">
+    <header class="border-b border-slate-800 bg-slate-900/60">
+      <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+        <h1 class="text-lg font-semibold">Administración de licencias</h1>
+        <button id="logout-btn" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800">Salir</button>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-5xl space-y-6 px-4 py-8">
+      <section class="flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 sm:flex-row sm:items-end">
+        <div class="flex-1">
+          <label for="label" class="mb-1 block text-sm font-medium text-slate-300">Etiqueta (opcional)</label>
+          <input id="label" type="text" maxlength="60" placeholder="ej. Cliente Juan"
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm outline-none focus:border-indigo-500" />
+        </div>
+        <button id="generate" class="rounded-lg bg-emerald-600 px-5 py-2.5 font-medium text-white hover:bg-emerald-500">+ Generar Key</button>
+      </section>
+
+      <p id="msg" class="hidden rounded-lg px-3 py-2 text-sm"></p>
+
+      <section class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70">
+        <div class="flex items-center justify-between border-b border-slate-800 px-5 py-3">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Keys</h2>
+          <span id="counter" class="text-xs text-slate-500"></span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="text-xs uppercase text-slate-500">
+              <tr>
+                <th class="px-5 py-3">Key</th>
+                <th class="px-5 py-3">Etiqueta</th>
+                <th class="px-5 py-3">Estado</th>
+                <th class="px-5 py-3">Creada</th>
+                <th class="px-5 py-3">Último uso</th>
+                <th class="px-5 py-3 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="rows" class="divide-y divide-slate-800"></tbody>
+          </table>
+        </div>
+        <p id="empty" class="hidden px-5 py-8 text-center text-sm text-slate-500">Aún no hay Keys. Genera la primera.</p>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let adminKey = sessionStorage.getItem('adminKey') || '';
+
+    async function api(path, opts = {}) {
+      const res = await fetch('/api/admin' + path, {
+        ...opts,
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = new Error(data.error || 'Error');
+        err.status = res.status;
+        throw err;
+      }
+      return data;
+    }
+
+    function flash(text, ok = true) {
+      const el = $('msg');
+      el.textContent = text;
+      el.className = 'rounded-lg px-3 py-2 text-sm ' + (ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400');
+      setTimeout(() => el.classList.add('hidden'), 3500);
+    }
+
+    const fmt = (iso) => (iso ? new Date(iso).toLocaleString() : '—');
+
+    function btn(text, cls, onClick) {
+      const b = document.createElement('button');
+      b.textContent = text;
+      b.className = 'rounded-md px-2.5 py-1 text-xs font-medium ' + cls;
+      b.addEventListener('click', onClick);
+      return b;
+    }
+
+    function cell(content, cls = 'px-5 py-3') {
+      const td = document.createElement('td');
+      td.className = cls;
+      if (content instanceof Node) td.appendChild(content);
+      else td.textContent = content;
+      return td;
+    }
+
+    function renderRow(k) {
+      const tr = document.createElement('tr');
+
+      const code = document.createElement('code');
+      code.className = 'font-mono text-xs text-indigo-300';
+      code.textContent = k.key;
+
+      const badge = document.createElement('span');
+      const active = k.status === 'active';
+      badge.className = 'rounded-full px-2.5 py-0.5 text-xs font-medium ' + (active ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400');
+      badge.textContent = active ? 'Activa' : 'Revocada';
+
+      const actions = document.createElement('div');
+      actions.className = 'flex justify-end gap-2';
+      actions.append(
+        btn('Copiar', 'bg-slate-800 text-slate-200 hover:bg-slate-700', async () => {
+          await navigator.clipboard.writeText(k.key);
+          flash('Key copiada');
+        }),
+        btn(active ? 'Revocar' : 'Reactivar', 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30', async () => {
+          await run(() => api('/keys/' + k.id, { method: 'PATCH', body: JSON.stringify({ status: active ? 'revoked' : 'active' }) }));
+        }),
+        btn('Eliminar', 'bg-red-500/20 text-red-300 hover:bg-red-500/30', async () => {
+          if (confirm('¿Eliminar esta Key de forma permanente?')) await run(() => api('/keys/' + k.id, { method: 'DELETE' }));
+        })
+      );
+
+      tr.append(cell(code), cell(k.label || '—', 'px-5 py-3 text-slate-300'), cell(badge),
+        cell(fmt(k.createdAt), 'px-5 py-3 text-slate-400'), cell(fmt(k.lastUsedAt), 'px-5 py-3 text-slate-400'), cell(actions));
+      return tr;
+    }
+
+    async function run(fn) {
+      try { await fn(); await load(); }
+      catch (err) { flash(err.message, false); }
+    }
+
+    async function load() {
+      try {
+        const { keys } = await api('/keys');
+        $('login-view').classList.add('hidden');
+        $('panel-view').classList.remove('hidden');
+        $('rows').replaceChildren(...keys.map(renderRow));
+        $('empty').classList.toggle('hidden', keys.length > 0);
+        const activeCount = keys.filter((k) => k.status === 'active').length;
+        $('counter').textContent = `${activeCount} activas · ${keys.length - activeCount} revocadas`;
+      } catch (err) {
+        if ([401, 429, 503].includes(err.status)) {
+          sessionStorage.removeItem('adminKey');
+          const hadKey = Boolean(adminKey);
+          adminKey = '';
+          $('panel-view').classList.add('hidden');
+          $('login-view').classList.remove('hidden');
+          if (hadKey) {
+            $('login-error').textContent = err.message;
+            $('login-error').classList.remove('hidden');
+          }
+        } else flash(err.message, false);
+      }
+    }
+
+    $('login-btn').addEventListener('click', () => {
+      adminKey = $('admin-key').value;
+      sessionStorage.setItem('adminKey', adminKey);
+      load();
+    });
+    $('admin-key').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('login-btn').click(); });
+
+    $('generate').addEventListener('click', () =>
+      run(async () => {
+        const { key } = await api('/keys', { method: 'POST', body: JSON.stringify({ label: $('label').value }) });
+        $('label').value = '';
+        flash('Key generada: ' + key.key);
+      })
+    );
+
+    $('logout-btn').addEventListener('click', () => {
+      sessionStorage.removeItem('adminKey');
+      location.reload();
+    });
+
+    if (adminKey) load();
+  </script>
+</body>
+</html>

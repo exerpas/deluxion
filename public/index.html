@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Acceso por licencia</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
+  <main class="w-full max-w-md">
+    <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-8 shadow-2xl backdrop-blur">
+      <div class="mb-6 text-center">
+        <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/20 text-2xl">🔑</div>
+        <h1 class="text-2xl font-semibold">Iniciar sesión</h1>
+        <p class="mt-1 text-sm text-slate-400">Ingresa tu Key de licencia para continuar</p>
+      </div>
+
+      <div id="login-form" class="space-y-4">
+        <div>
+          <label for="key" class="mb-1 block text-sm font-medium text-slate-300">Key de licencia</label>
+          <input id="key" type="text" autocomplete="off" spellcheck="false" placeholder="LIC-XXXXXX-XXXXXX-XXXXXX-XXXXXX"
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 font-mono text-sm placeholder-slate-600 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30" />
+        </div>
+        <p id="error" class="hidden rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400"></p>
+        <button id="submit" type="button"
+          class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50">
+          Entrar
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const keyInput = document.getElementById('key');
+    const errorBox = document.getElementById('error');
+    const button = document.getElementById('submit');
+
+    async function login() {
+      errorBox.classList.add('hidden');
+      button.disabled = true;
+      button.textContent = 'Verificando…';
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: keyInput.value }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'No se pudo iniciar sesión');
+        window.location.href = '/dashboard';
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.classList.remove('hidden');
+        button.disabled = false;
+        button.textContent = 'Entrar';
+      }
+    }
+
+    button.addEventListener('click', login);
+    keyInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+  </script>
+</body>
+</html>
